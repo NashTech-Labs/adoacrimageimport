@@ -1,0 +1,45 @@
+parameters:
+
+- name: targetContainerRegistry
+  type: string
+
+- name: sourceContainerRegistry
+  type: string
+
+- name: imageRepository
+  type: string
+
+- name: sourceImageTag
+  type: string
+  default: "latest"
+
+- name: armServiceConnection
+  type: string
+
+- name: servicePrincipalApplicationId
+  type: string
+
+- name: servicePrincipalClientAuth
+  type: string
+
+steps:
+- task: AzureCLI@2
+  displayName: "Importing ACR Image from ${{ parameters.sourceContainerRegistry }} to ${{ parameters.targetContainerRegistry }} to"
+  inputs:
+    azureSubscription: ${{ parameters.armServiceConnection }}
+    scriptType: pscore
+    scriptLocation: inlineScript
+    inlineScript: |
+      $targetContainerRegistry = "${{ parameters.targetContainerRegistry }}"
+      $sourceImage = "${{ parameters.sourceContainerRegistry }}.azurecr.io/${{ parameters.imageRepository }}:${{ parameters.sourceImageTag }}"
+      $targetImage = "${{ parameters.imageRepository }}:${{ parameters.sourceImageTag }}"
+      $userName = '${{ parameters.servicePrincipalApplicationId }}'
+      $password = '${{ parameters.servicePrincipalClientAuth }}'
+      $output = az acr repository show -n $targetContainerRegistry --image $targetImage
+      if (-not $output) {
+        Write-Output "Importing image tag ${{ parameters.sourceImageTag }}"
+        az acr import --name $targetContainerRegistry --source $sourceImage --image $targetImage --username $userName --password $password
+      }
+      else {
+        Write-Host "Image $targetImage already exists in $targetContainerRegistry."
+      }
